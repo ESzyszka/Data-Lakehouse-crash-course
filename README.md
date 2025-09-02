@@ -1,47 +1,4 @@
-## Conclusion
-
-The modern data stack enables powerful multimodal data processing pipelines that bridge traditional analytics and AI workloads. Using the **Formula 1 Grand Prix Winners Dataset (1950–2025)** as our example, we've demonstrated how to combine:
-
-- **Parquet** for efficient storage of historical F1 race data
-- **DuckDB** for fast championship and era analysis
-- **LanceDB** for driver similarity and race characteristic searches
-- **Daft** for multimodal processing of race videos, driver photos, and telemetry  
-- **Databricks** for enterprise-scale F1 analytics
-
-This architecture allows you to build sophisticated F1 analytics systems that can:
-- Find drivers with similar racing styles and performance patterns
-- Search through decades of race footage for specific moments
-- Analyze championship battles across different eras
-- Prepare rich F1 datasets for training specialized language models
-- Scale from historical analysis to real-time race prediction
-
-### Key Achievements from this Tutorial
-
-1. **Real-world application**: Used actual Kaggle F1 dataset showing practical implementation
-2. **End-to-end pipeline**: Complete workflow from data ingestion to AI-ready embeddings
-3. **Performance optimization**: Efficient processing of 75+ years of F1 historical data
-4. **Multimodal capabilities**: Integration of race videos, driver photos, and structured data
-5. **Enterprise readiness**: Robust error handling and scalable architecture patterns
-
-### Next Steps
-
-1. **Download the dataset**: Get the [Formula 1 Grand Prix Winners Dataset](https://www.kaggle.com/datasets/julianbloise/winners-formula-1-1950-to-2025) from Kaggle
-2. **Start small**: Begin with basic Parquet operations on recent F1 seasons (2020-2025)
-3. **Add embeddings**: Implement driver performance and race characteristic embeddings
-4. **Build vector search**: Create similarity search for drivers and races
-5. **Scale gradually**: Expand to full historical dataset and add video/image processing
-6. **Monitor and optimize**: Profile queries and optimize for your specific F1 analysis use cases
-
-### Practical F1 Use Cases to Explore
-
-- **Championship predictor**: Use historical patterns to predict season outcomes
-- **Driver career analyzer**: Compare### Step 4: F1 Vector Search
-
-```python
-def find_similar_drivers(driver_name, limit=5):
-    """Find drivers with similar performance characteristics"""
-    
-    # Get the driver's embedding# Modern Multimodal Data Processing: From Parquet to AI Workloads
+# Modern Multimodal Data Processing: From Parquet to AI Workloads
 
 *A comprehensive guide to querying multimodal data using Parquet, DuckDB, LanceDB, Daft, and Databricks*
 
@@ -74,20 +31,19 @@ The data landscape has evolved dramatically. We've moved from simple CSV files t
 ### Traditional Tabular Workloads
 Traditional analytics focused on structured data:
 ```sql
--- Formula 1 race analysis example
-SELECT driver, COUNT(*) as wins
-FROM f1_winners 
-WHERE year >= 2020
-GROUP BY driver
-ORDER BY wins DESC;
+-- Clickstream analysis example
+SELECT user_id, COUNT(*) as clicks
+FROM clickstream_data 
+WHERE date >= '2024-01-01'
+GROUP BY user_id;
 ```
 
 ### Modern Multimodal Workloads
-Today's applications require processing diverse data types in F1 analytics:
-- **Race videos** for computer vision analysis (overtaking detection, crashes)
-- **Radio communications** for speech processing and sentiment analysis
-- **Telemetry data** combined with driver photos for performance analysis
-- **Historical race embeddings** for similarity search and predictions
+Today's applications require processing diverse data types:
+- Images and videos for computer vision
+- Text documents for NLP
+- Audio files for speech processing
+- Embeddings for similarity search
 
 ## Parquet Files: The Foundation
 
@@ -100,14 +56,11 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-# Download F1 dataset from Kaggle first
-# kaggle datasets download -d julianbloise/winners-formula-1-1950-to-2025
+# CSV limitations
+df_csv = pd.read_csv('large_dataset.csv')  # Slow, no schema, large size
 
-# CSV limitations - slow loading of F1 data
-df_csv = pd.read_csv('formula-1-winners.csv')  # Slow, no schema, large size
-
-# Parquet benefits - efficient F1 data storage
-df_parquet = pd.read_parquet('f1_winners.parquet')  # Fast, typed, compressed
+# Parquet benefits
+df_parquet = pd.read_parquet('large_dataset.parquet')  # Fast, typed, compressed
 ```
 
 ### Key Advantages:
@@ -119,27 +72,20 @@ df_parquet = pd.read_parquet('f1_winners.parquet')  # Fast, typed, compressed
 ### Working with Parquet
 
 ```python
-# Load the F1 dataset and convert to Parquet
-import pandas as pd
-import numpy as np
+# Creating Parquet files
+data = {
+    'id': range(1000),
+    'filename': [f'image_{i}.jpg' for i in range(1000)],
+    'embedding': [[0.1, 0.2, 0.3] for _ in range(1000)]
+}
+df = pd.DataFrame(data)
+df.to_parquet('multimodal_data.parquet')
 
-# Read the Kaggle F1 dataset
-df_f1 = pd.read_csv('formula-1-winners.csv')
-
-# Add multimodal columns for our examples
-df_f1['driver_photo'] = df_f1['Driver'].apply(lambda x: f'photos/{x.replace(" ", "_").lower()}.jpg')
-df_f1['race_video'] = df_f1.apply(lambda x: f'videos/{x["Year"]}_{x["Grand Prix"].replace(" ", "_")}.mp4', axis=1)
-df_f1['driver_embedding'] = [np.random.random(768).tolist() for _ in range(len(df_f1))]
-
-# Save as Parquet
-df_f1.to_parquet('f1_multimodal.parquet')
-
-# Reading with filters - find all wins by Lewis Hamilton
-hamilton_wins = pd.read_parquet(
-    'f1_multimodal.parquet',
-    filters=[('Driver', '==', 'Lewis Hamilton')]
+# Reading with filters
+filtered_df = pd.read_parquet(
+    'multimodal_data.parquet',
+    filters=[('id', '>', 500)]
 )
-print(f"Lewis Hamilton has {len(hamilton_wins)} wins in the dataset")
 ```
 
 ## DuckDB: Analytics Made Simple
@@ -152,52 +98,36 @@ DuckDB provides a lightweight, embedded analytical database that excels at proce
 import duckdb
 
 # Connect to DuckDB (in-memory or persistent)
-conn = duckdb.connect('f1_analytics.duckdb')
+conn = duckdb.connect('analytics.duckdb')
 
-# Query F1 Parquet files directly
+# Query Parquet files directly
 result = conn.execute("""
-    SELECT Driver, Team, COUNT(*) as wins
-    FROM 'f1_multimodal.parquet'
-    WHERE Year >= 2000
-    GROUP BY Driver, Team
-    ORDER BY wins DESC
-    LIMIT 10
+    SELECT id, filename, COUNT(*)
+    FROM 'multimodal_data.parquet'
+    WHERE id > 100
+    GROUP BY id, filename
+    ORDER BY COUNT(*) DESC
 """).fetchall()
-
-print("Top F1 winners since 2000:")
-for driver, team, wins in result:
-    print(f"{driver} ({team}): {wins} wins")
 ```
 
 ### Advanced Features
 
 #### Object Storage Integration
 ```sql
--- Query F1 race data directly from S3
-SELECT Driver, "Grand Prix", Year, Team
-FROM 's3://f1-data/races/*.parquet'
-WHERE Year >= 2020 AND Team = 'Mercedes'
-ORDER BY Year, "Grand Prix";
+-- Query files directly from S3
+SELECT * FROM 's3://bucket/data/*.parquet'
+WHERE created_date >= '2024-01-01';
 ```
 
 #### Apache Iceberg Support
-DuckDB integrates with Iceberg for transactional semantics on F1 data:
+DuckDB integrates with Iceberg for transactional semantics:
 
 ```python
-# Iceberg table operations for F1 race results
+# Iceberg table operations
 conn.execute("""
-    CREATE TABLE f1_iceberg_races AS
-    SELECT * FROM iceberg_scan('s3://f1-lake/iceberg-races/')
-    WHERE Year >= 2020
+    CREATE TABLE iceberg_table AS
+    SELECT * FROM iceberg_scan('s3://bucket/iceberg-table/')
 """)
-
-# Time travel to see historical race results
-historical_results = conn.execute("""
-    SELECT Driver, Team, "Grand Prix"
-    FROM f1_iceberg_races
-    FOR SYSTEM_TIME AS OF '2023-01-01'
-    WHERE Driver = 'Max Verstappen'
-""").fetchall()
 ```
 
 ### Architecture Benefits
@@ -217,71 +147,51 @@ LanceDB specializes in vector storage and similarity search, essential for AI ap
 ```python
 import lancedb
 import numpy as np
-import pandas as pd
 
-# Create/connect to LanceDB for F1 data
-db = lancedb.connect("./f1-lance-data")
+# Create/connect to LanceDB
+db = lancedb.connect("./lance-data")
 
-# Load F1 dataset and create embeddings
-df_f1 = pd.read_parquet('f1_multimodal.parquet')
+# Sample multimodal data
+data = [
+    {
+        "id": 1,
+        "filename": "image1.jpg",
+        "vector": np.random.random(768).tolist(),
+        "metadata": {"category": "person", "confidence": 0.95}
+    },
+    {
+        "id": 2, 
+        "filename": "video1.mp4",
+        "vector": np.random.random(768).tolist(),
+        "metadata": {"category": "landscape", "confidence": 0.87}
+    }
+]
 
-# Create sample multimodal F1 data with embeddings
-f1_embeddings = []
-for _, row in df_f1.head(100).iterrows():  # Using first 100 records for example
-    f1_embeddings.append({
-        "race_id": f"{row['Year']}_{row['Grand Prix'].replace(' ', '_')}",
-        "driver": row['Driver'],
-        "team": row['Team'], 
-        "grand_prix": row['Grand Prix'],
-        "year": row['Year'],
-        "driver_photo": row['driver_photo'],
-        "race_video": row['race_video'],
-        "driver_embedding": np.random.random(768).tolist(),  # Simulated driver performance embedding
-        "race_embedding": np.random.random(768).tolist(),    # Simulated race characteristics embedding
-        "metadata": {
-            "constructor": row['Team'],
-            "era": "modern" if row['Year'] >= 2000 else "classic",
-            "decade": f"{row['Year']//10*10}s"
-        }
-    })
-
-# Create LanceDB table
-table = db.create_table("f1_multimodal_embeddings", f1_embeddings)
+# Create table
+table = db.create_table("multimodal_embeddings", data)
 ```
 
 ### Vector Search Operations
 
 ```python
-# Find similar F1 drivers based on performance embeddings
-sample_driver_embedding = f1_embeddings[0]["driver_embedding"]
+# Similarity search
+query_vector = np.random.random(768).tolist()
 
-# Search for similar driving styles/performance
-similar_drivers = table.search(sample_driver_embedding, vector_column="driver_embedding")\
+results = table.search(query_vector).limit(10).to_list()
+print(f"Found {len(results)} similar items")
+
+# Filtered vector search
+filtered_results = table.search(query_vector)\
+    .where("metadata.confidence > 0.9")\
     .limit(5)\
     .to_list()
-
-print("Drivers with similar performance characteristics:")
-for result in similar_drivers:
-    print(f"- {result['driver']} ({result['team']}) - {result['year']}")
-
-# Find similar race characteristics
-sample_race_embedding = f1_embeddings[0]["race_embedding"] 
-
-similar_races = table.search(sample_race_embedding, vector_column="race_embedding")\
-    .where("metadata.era = 'modern'")\
-    .limit(5)\
-    .to_list()
-
-print("\nRaces with similar characteristics:")
-for result in similar_races:
-    print(f"- {result['grand_prix']} {result['year']} (Winner: {result['driver']})")
 ```
 
 ### Use Cases
-- **Driver similarity analysis**: Find drivers with similar racing styles and performance patterns
-- **Race video search**: Content-based retrieval of similar race moments and overtaking maneuvers  
-- **Historical race analysis**: Semantic search through decades of F1 commentary and reports
-- **Team strategy recommendations**: Similar race conditions and strategic decisions
+- **Video similarity**: Find similar video content
+- **Image search**: Content-based image retrieval  
+- **Document search**: Semantic text search
+- **Recommendation systems**: User/item similarity
 
 ## Daft: Multimodal Data Processing
 
@@ -298,73 +208,49 @@ pip install getdaft
 ```python
 import daft
 
-# Read F1 multimodal data
-df = daft.read_parquet("f1_multimodal.parquet")
+# Read multimodal data
+df = daft.read_parquet("multimodal_data.parquet")
 
-# Load driver photos for computer vision analysis
-def load_driver_image(photo_path):
-    """Simulate loading driver photos for facial recognition/analysis"""
-    # In practice, you'd load actual images
-    return f"image_data_for_{photo_path}"
-
+# Process images
 df_with_images = df.with_column(
-    "driver_image_data", 
-    df["driver_photo"].apply(load_driver_image, return_dtype=daft.DataType.string())
+    "image_data", 
+    df["filename"].apply(lambda x: load_image(x), return_dtype=daft.DataType.python())
 )
 
-# Extract facial features for driver recognition
-def extract_driver_features(image_data):
-    """Extract facial features from driver photos"""
-    # In practice, use a model like FaceNet or similar
-    return np.random.random(512).tolist()  # Simulated facial embedding
-
+# Extract features
 df_processed = df_with_images.with_column(
-    "facial_features",
-    df_with_images["driver_image_data"].apply(
-        extract_driver_features, 
-        return_dtype=daft.DataType.tensor(daft.DataType.float32())
-    )
+    "features",
+    df_with_images["image_data"].apply(extract_features, return_dtype=daft.DataType.tensor(daft.DataType.float32()))
 )
 ```
 
 ### Advanced Multimodal Operations
 
 ```python
-# F1 race video processing pipeline
-def extract_race_frames(video_path):
-    """Extract key frames from F1 race videos"""
-    # In practice, extract frames at key moments (starts, overtakes, crashes)
-    return [f"frame_{i}.jpg" for i in range(10)]
+# Video processing pipeline
+video_df = daft.read_parquet("videos.parquet")
 
-def generate_race_embeddings(frames):
-    """Generate embeddings from race video frames"""
-    # In practice, use a video analysis model
-    return np.random.random(768).tolist()
-
-# Process race videos
-race_videos_df = df.select(["race_video", "Driver", "Grand Prix", "Year"])
-
-# Extract key frames from race footage
-frames_df = race_videos_df.with_column(
-    "key_frames",
-    race_videos_df["race_video"].apply(extract_race_frames)
+# Extract frames
+frames_df = video_df.with_column(
+    "frames",
+    video_df["video_path"].apply(extract_frames)
 )
 
-# Generate embeddings for race analysis
+# Generate embeddings
 embeddings_df = frames_df.with_column(
-    "race_video_embedding", 
-    frames_df["key_frames"].apply(generate_race_embeddings)
+    "embeddings", 
+    frames_df["frames"].apply(generate_video_embeddings)
 )
 
-# Save processed F1 video data to LanceDB
-embeddings_df.write_lance("f1_video_embeddings")
+# Save to LanceDB
+embeddings_df.write_lance("video_embeddings")
 ```
 
 ### Key Features
-- **Lazy evaluation**: Efficient processing of large F1 historical datasets
-- **Multimodal support**: Native handling of race videos, driver photos, telemetry data
-- **Distributed compute**: Scale across multiple machines for processing decades of F1 data
-- **Integration**: Works seamlessly with other tools in the F1 analytics stack
+- **Lazy evaluation**: Efficient processing of large datasets
+- **Multimodal support**: Native handling of images, video, text
+- **Distributed compute**: Scale across multiple machines
+- **Integration**: Works seamlessly with other tools in the stack
 
 ## Databricks: Enterprise Scale
 
@@ -375,11 +261,10 @@ Databricks provides the enterprise platform for large-scale multimodal data proc
 Databricks implements ACID properties for reliable data operations:
 
 ```sql
--- Atomic F1 operations
+-- Atomic operations
 BEGIN TRANSACTION;
-    INSERT INTO f1_driver_embeddings SELECT * FROM new_driver_analysis;
-    UPDATE f1_driver_profiles SET last_updated = current_timestamp();
-    INSERT INTO f1_race_predictions SELECT * FROM latest_predictions;
+    INSERT INTO user_embeddings SELECT * FROM new_embeddings;
+    UPDATE user_profiles SET last_updated = current_timestamp();
 COMMIT;
 ```
 
@@ -392,18 +277,13 @@ from pyspark.sql import SparkSession
 # Configure Spark for Delta Lake
 spark = configure_spark_with_delta_pip(SparkSession.builder).getOrCreate()
 
-# Read F1 Delta table
-f1_results_df = spark.read.format("delta").load("/path/to/f1-results-delta")
+# Read Delta table
+df = spark.read.format("delta").load("/path/to/delta-table")
 
-# Time travel to see historical F1 standings
-historical_f1 = spark.read.format("delta")\
-    .option("timestampAsOf", "2020-12-31")\
-    .load("/path/to/f1-results-delta")
-
-# Analyze championship battles over time
-championship_evolution = historical_f1.filter(
-    historical_f1.Driver.isin(["Lewis Hamilton", "Max Verstappen"])
-).groupBy("Driver", "Year").count().orderBy("Year")
+# Time travel
+historical_df = spark.read.format("delta")\
+    .option("timestampAsOf", "2024-01-01")\
+    .load("/path/to/delta-table")
 ```
 
 ### Advanced Features
@@ -417,689 +297,247 @@ Modern table formats provide:
 
 #### Performance Optimizations
 ```sql
--- Z-ordering for better file skipping on F1 queries
-OPTIMIZE f1_race_results ZORDER BY (year, driver, constructor);
-
--- Partition by decade for efficient historical analysis
-CREATE TABLE f1_partitioned
-USING DELTA
-PARTITIONED BY (decade)
-AS SELECT *, (year DIV 10) * 10 as decade FROM f1_race_results;
+-- Z-ordering for better file skipping
+OPTIMIZE table_name ZORDER BY (user_id, timestamp);
 
 -- Vacuum old files
-VACUUM f1_race_results RETAIN 168 HOURS;
+VACUUM table_name RETAIN 168 HOURS;
 ```
 
 ## Building a Complete Pipeline
 
-Let's build an end-to-end F1 multimodal data pipeline:
+Let's build an end-to-end multimodal data pipeline:
 
-### Step 1: F1 Data Ingestion
+### Step 1: Data Ingestion
 
 ```python
 import daft
 import lancedb
 import duckdb
-import pandas as pd
-import numpy as np
 
-def ingest_f1_data(kaggle_csv_path):
-    """Ingest and enrich F1 data with multimodal components"""
+# Ingest multimodal data
+def ingest_data(source_path):
+    # Read raw data with Daft
+    df = daft.read_json(f"{source_path}/*.json")
     
-    # Read Kaggle F1 dataset
-    df = pd.read_csv(kaggle_csv_path)
+    # Process images
+    df = df.with_column(
+        "image_embedding",
+        df["image_path"].apply(generate_image_embedding)
+    )
     
-    # Convert to Daft for multimodal processing
-    daft_df = daft.from_pandas(df)
+    # Process text
+    df = df.with_column(
+        "text_embedding", 
+        df["description"].apply(generate_text_embedding)
+    )
     
-    # Add multimodal paths
-    daft_df = daft_df.with_columns([
-        daft.col("Driver").apply(
-            lambda x: f"photos/drivers/{x.replace(' ', '_').lower()}.jpg"
-        ).alias("driver_photo"),
-        
-        daft.col("Grand Prix").apply(
-            lambda gp, year=daft.col("Year"): f"videos/races/{year}_{gp.replace(' ', '_')}.mp4"
-        ).alias("race_video"),
-        
-        daft.col("Team").apply(
-            lambda team: f"audio/radio/{team.replace(' ', '_')}_radio.wav"
-        ).alias("team_radio")
-    ])
-    
-    # Generate embeddings (in practice, use actual ML models)
-    def generate_driver_embedding(driver_name):
-        """Generate driver performance embedding"""
-        # This would use actual driver statistics, racing style analysis, etc.
-        np.random.seed(hash(driver_name) % 2147483647)
-        return np.random.random(768).tolist()
-    
-    def generate_race_embedding(grand_prix, year):
-        """Generate race characteristics embedding"""
-        # This would analyze track layout, weather, historical data, etc.
-        np.random.seed(hash(f"{grand_prix}_{year}") % 2147483647)
-        return np.random.random(768).tolist()
-    
-    # Add embeddings
-    daft_df = daft_df.with_columns([
-        daft.col("Driver").apply(generate_driver_embedding).alias("driver_embedding"),
-        daft.col("Grand Prix").apply(
-            lambda gp, year=daft.col("Year"): generate_race_embedding(gp, year)
-        ).alias("race_embedding")
-    ])
-    
-    return daft_df
+    return df
 
-# Process the F1 data
-f1_processed = ingest_f1_data("formula-1-winners.csv")
+# Process the data
+processed_df = ingest_data("raw_data/")
 ```
 
 ### Step 2: Storage and Indexing
 
 ```python
-# Save F1 data to Parquet for analytical queries
-f1_processed.write_parquet("f1_multimodal_processed.parquet")
+# Save to Parquet for analytical queries
+processed_df.write_parquet("processed_data.parquet")
 
-# Create LanceDB vector index for similarity search
-db = lancedb.connect("./f1_vector_db")
+# Index vectors in LanceDB
+db = lancedb.connect("./vector_db")
+lance_data = processed_df.select([
+    "id", "image_embedding", "text_embedding", "metadata"
+]).to_pyarrow_table()
 
-# Convert to format suitable for LanceDB
-f1_pandas = f1_processed.to_pandas()
-lance_data = []
-
-for _, row in f1_pandas.iterrows():
-    lance_data.append({
-        "race_id": f"{row['Year']}_{row['Grand Prix'].replace(' ', '_')}",
-        "driver": row['Driver'],
-        "constructor": row['Team'],
-        "grand_prix": row['Grand Prix'],
-        "year": int(row['Year']),
-        "driver_embedding": row['driver_embedding'],
-        "race_embedding": row['race_embedding'],
-        "driver_photo": row['driver_photo'],
-        "race_video": row['race_video'],
-        "metadata": {
-            "era": "modern" if row['Year'] >= 2000 else "classic",
-            "decade": f"{int(row['Year'])//10*10}s",
-            "constructor": row['Team']
-        }
-    })
-
-# Create vector search table
-f1_table = db.create_table("f1_multimodal_search", lance_data)
-print(f"Indexed {len(lance_data)} F1 race records for vector search")
+table = db.create_table("multimodal_index", lance_data)
 ```
 
-### Step 3: F1 Analytics with DuckDB
+### Step 3: Analytics with DuckDB
 
 ```python
-conn = duckdb.connect("f1_analytics.duckdb")
+conn = duckdb.connect("analytics.duckdb")
 
-# Championship analysis
-championship_analysis = conn.execute("""
+# Analytical queries
+results = conn.execute("""
     SELECT 
-        driver,
-        constructor,
-        COUNT(*) as total_wins,
-        MIN(year) as first_win,
-        MAX(year) as last_win,
-        MAX(year) - MIN(year) as career_span
-    FROM 'f1_multimodal_processed.parquet'
-    GROUP BY driver, constructor
-    HAVING total_wins >= 5
-    ORDER BY total_wins DESC
+        category,
+        COUNT(*) as count,
+        AVG(confidence_score) as avg_confidence
+    FROM 'processed_data.parquet'
+    GROUP BY category
+    ORDER BY count DESC
 """).fetchall()
-
-print("F1 Champions Analysis (5+ wins):")
-for driver, constructor, wins, first, last, span in championship_analysis:
-    print(f"{driver} ({constructor}): {wins} wins ({first}-{last}, {span} year span)")
-
-# Era comparison
-era_stats = conn.execute("""
-    SELECT 
-        CASE 
-            WHEN year < 1980 THEN 'Classic Era (pre-1980)'
-            WHEN year < 2000 THEN 'Modern Era (1980-1999)' 
-            WHEN year < 2014 THEN 'V8 Era (2000-2013)'
-            ELSE 'Hybrid Era (2014+)'
-        END as era,
-        COUNT(*) as races,
-        COUNT(DISTINCT driver) as unique_winners,
-        COUNT(DISTINCT constructor) as unique_constructors
-    FROM 'f1_multimodal_processed.parquet'
-    GROUP BY 1
-    ORDER BY MIN(year)
-""").fetchall()
-
-print("\nF1 Era Analysis:")
-for era, races, winners, constructors in era_stats:
-    print(f"{era}: {races} races, {winners} unique winners, {constructors} constructors")
 ```
 
-### Step 4: F1 Vector Search
+### Step 4: Vector Search
 
 ```python
-def find_similar_drivers(driver_name, limit=5):
-    """Find drivers with similar performance characteristics"""
-    
-    # Get the driver's embedding
-    driver_record = f1_table.search()\
-        .where(f"driver = '{driver_name}'")\
-        .limit(1)\
-        .to_list()
-    
-    if not driver_record:
-        print(f"Driver {driver_name} not found")
-        return []
-    
-    driver_embedding = driver_record[0]['driver_embedding']
-    
-    # Find similar drivers
-    similar = f1_table.search(driver_embedding, vector_column="driver_embedding")\
-        .where(f"driver != '{driver_name}'")\
+# Find similar content
+def find_similar(query_embedding, limit=10):
+    return table.search(query_embedding)\
         .limit(limit)\
-        .to_list()
-    
-    return similar
-
-def find_similar_races(grand_prix, year, limit=5):
-    """Find races with similar characteristics"""
-    
-    # Get the race embedding
-    race_record = f1_table.search()\
-        .where(f"grand_prix = '{grand_prix}' AND year = {year}")\
-        .limit(1)\
-        .to_list()
-    
-    if not race_record:
-        print(f"Race {grand_prix} {year} not found")
-        return []
-    
-    race_embedding = race_record[0]['race_embedding']
-    
-    # Find similar races
-    similar = f1_table.search(race_embedding, vector_column="race_embedding")\
-        .where(f"NOT (grand_prix = '{grand_prix}' AND year = {year})")\
-        .limit(limit)\
-        .to_list()
-    
-    return similar
+        .to_pandas()
 
 # Example usage
-print("Finding drivers similar to Lewis Hamilton:")
-similar_to_hamilton = find_similar_drivers("Lewis Hamilton", limit=5)
-for driver in similar_to_hamilton:
-    print(f"- {driver['driver']} ({driver['constructor']}, {driver['year']})")
-
-print("\nFinding races similar to Monaco 2008:")
-similar_races = find_similar_races("Monaco Grand Prix", 2008, limit=3)
-for race in similar_races:
-    print(f"- {race['grand_prix']} {race['year']} (Winner: {race['driver']})")
+similar_items = find_similar(sample_embedding)
 ```
 
 ## Performance Optimization
 
 ### File Skipping Strategies
 
-1. **Partition F1 data by era**: Organize by decades or regulatory periods
-2. **Use appropriate file sizes**: 100MB-1GB per file for optimal F1 historical data
-3. **Implement predicate pushdown**: Filter at the storage level for year/driver queries
+1. **Partition your data**: Organize by frequently queried columns
+2. **Use appropriate file sizes**: 100MB-1GB per file
+3. **Implement predicate pushdown**: Filter at the storage level
 
 ### Query Optimization
 
 ```python
-# Efficient F1 data filtering
-modern_era_wins = daft.read_parquet("f1_multimodal_processed.parquet")\
-    .where(daft.col("Year") >= 2000)\
-    .where(daft.col("Driver").isin(["Lewis Hamilton", "Michael Schumacher", "Sebastian Vettel"]))
+# Efficient filtering
+df_filtered = daft.read_parquet("data.parquet")\
+    .where(daft.col("timestamp") >= "2024-01-01")\
+    .where(daft.col("category") == "important")
 
-# Lazy evaluation for driver analysis
-driver_analysis = modern_era_wins.select(["Driver", "Team", "Grand Prix", "Year"])\
-    .with_column("wins_per_team", 
-                 daft.col("Driver").apply(lambda d: compute_team_wins(d)))
-
-# Process championship battles efficiently
-championship_data = modern_era_wins.groupby(["Driver", "Year"])\
-    .agg([daft.col("Grand Prix").count().alias("wins_per_season")])
+# Lazy evaluation
+df_processed = df_filtered.select(["id", "embedding"])\
+    .with_column("similarity", compute_similarity(daft.col("embedding")))
 ```
 
 ### Memory Management
 
 ```python
-# Process large F1 historical datasets in batches
-def process_f1_decades(file_path, batch_size=1000):
-    """Process F1 data decade by decade to manage memory"""
+# Process in batches
+def process_large_dataset(file_path, batch_size=1000):
     df = daft.read_parquet(file_path)
     
-    # Group by decade for efficient processing
-    decades = [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020]
-    
-    for decade in decades:
-        decade_data = df.where(
-            (daft.col("Year") >= decade) & 
-            (daft.col("Year") < decade + 10)
-        )
-        
-        # Process decade data
-        processed_decade = process_f1_decade_batch(decade_data)
-        yield f"Processed {decade}s F1 data", processed_decade
-
-def process_f1_decade_batch(decade_df):
-    """Process a single decade of F1 data"""
-    return decade_df.with_columns([
-        decade_df["Driver"].apply(analyze_driver_performance).alias("performance_score"),
-        decade_df["Team"].apply(analyze_constructor_dominance).alias("team_strength")
-    ])
-
-# Example usage
-for decade_info, processed_data in process_f1_decades("f1_multimodal_processed.parquet"):
-    print(decade_info)
-    # Save or further process each decade
+    for batch in df.iter_partitions(batch_size):
+        processed_batch = process_batch(batch)
+        yield processed_batch
 ```
 
 ## Real-World Use Cases
 
-### 1. F1 Driver Recommendation System
+### 1. Content Recommendation System
 
 ```python
-def build_f1_driver_recommendations(target_driver):
-    """Build recommendations for similar F1 drivers based on performance"""
-    
-    # Get target driver's race history and performance
-    driver_history = conn.execute("""
-        SELECT year, constructor, grand_prix, 
-               ROW_NUMBER() OVER (PARTITION BY year ORDER BY year) as race_order
-        FROM f1_multimodal_processed 
-        WHERE driver = ?
-        ORDER BY year DESC
+# Build a recommendation system
+def build_recommendations(user_id):
+    # Get user's interaction history
+    user_history = conn.execute("""
+        SELECT item_id, interaction_type, timestamp
+        FROM user_interactions 
+        WHERE user_id = ?
+        ORDER BY timestamp DESC
         LIMIT 50
-    """, [target_driver]).fetchall()
+    """, [user_id]).fetchall()
     
-    if not driver_history:
-        return f"No data found for {target_driver}"
+    # Get item embeddings
+    item_embeddings = [get_embedding(item[0]) for item in user_history]
     
-    # Get driver's performance embedding
-    driver_records = f1_table.search()\
-        .where(f"driver = '{target_driver}'")\
-        .limit(10)\
-        .to_list()
-    
-    # Find similar drivers based on performance patterns
+    # Find similar items
     recommendations = []
-    for record in driver_records:
-        driver_embedding = record['driver_embedding']
-        similar_drivers = f1_table.search(driver_embedding, vector_column="driver_embedding")\
-            .where(f"driver != '{target_driver}'")\
-            .limit(3)\
-            .to_list()
-        recommendations.extend(similar_drivers)
+    for embedding in item_embeddings:
+        similar = table.search(embedding).limit(5).to_list()
+        recommendations.extend(similar)
     
-    # Deduplicate and rank recommendations
-    unique_drivers = {}
-    for rec in recommendations:
-        driver_name = rec['driver']
-        if driver_name not in unique_drivers:
-            unique_drivers[driver_name] = {
-                'driver': driver_name,
-                'constructor': rec['constructor'],
-                'years': [rec['year']],
-                'count': 1
-            }
-        else:
-            unique_drivers[driver_name]['years'].append(rec['year'])
-            unique_drivers[driver_name]['count'] += 1
-    
-    # Sort by frequency of similarity
-    sorted_recommendations = sorted(
-        unique_drivers.values(), 
-        key=lambda x: x['count'], 
-        reverse=True
-    )[:5]
-    
-    return sorted_recommendations
-
-# Example usage
-hamilton_similar = build_f1_driver_recommendations("Lewis Hamilton")
-print(f"Drivers similar to Lewis Hamilton:")
-for rec in hamilton_similar:
-    year_range = f"{min(rec['years'])}-{max(rec['years'])}"
-    print(f"- {rec['driver']} ({rec['constructor']}) - Active: {year_range}")
+    return deduplicate_recommendations(recommendations)
 ```
 
-### 2. F1 Multimodal Search Engine
+### 2. Multimodal Search Engine
 
 ```python
-def f1_multimodal_search(query_text=None, driver_name=None, era_filter=None):
-    """Search F1 data using text, driver performance, or era characteristics"""
-    
+def multimodal_search(query_text=None, query_image=None):
     results = []
     
     if query_text:
-        # Text-based search through race descriptions/metadata
-        # In practice, you'd generate text embedding from query
         text_embedding = generate_text_embedding(query_text)
-        text_results = f1_table.search(text_embedding, vector_column="race_embedding")\
-            .limit(10)\
-            .to_list()
-        results.extend(text_results)
+        text_results = table.search(text_embedding, vector_column="text_embedding")
+        results.extend(text_results.to_list())
     
-    if driver_name:
-        # Driver performance-based search
-        driver_records = f1_table.search()\
-            .where(f"driver = '{driver_name}'")\
-            .limit(5)\
-            .to_list()
-        
-        if driver_records:
-            driver_embedding = driver_records[0]['driver_embedding']
-            similar_performances = f1_table.search(driver_embedding, vector_column="driver_embedding")\
-                .limit(10)\
-                .to_list()
-            results.extend(similar_performances)
+    if query_image:
+        image_embedding = generate_image_embedding(query_image)
+        image_results = table.search(image_embedding, vector_column="image_embedding")
+        results.extend(image_results.to_list())
     
-    if era_filter:
-        # Era-based filtering
-        era_results = f1_table.search()\
-            .where(f"metadata.era = '{era_filter}'")\
-            .limit(20)\
-            .to_list()
-        results.extend(era_results)
-    
-    # Merge and rank results
-    return merge_and_rank_f1_results(results)
-
-def merge_and_rank_f1_results(results):
-    """Merge and rank F1 search results"""
-    unique_results = {}
-    
-    for result in results:
-        race_id = result['race_id']
-        if race_id not in unique_results:
-            unique_results[race_id] = result
-            unique_results[race_id]['relevance_score'] = 1
-        else:
-            unique_results[race_id]['relevance_score'] += 1
-    
-    # Sort by relevance
-    ranked_results = sorted(
-        unique_results.values(),
-        key=lambda x: x['relevance_score'],
-        reverse=True
-    )
-    
-    return ranked_results[:10]
-
-# Example searches
-print("Search 1: Monaco races")
-monaco_results = f1_multimodal_search(query_text="Monaco street circuit challenging")
-for result in monaco_results[:3]:
-    print(f"- {result['grand_prix']} {result['year']} (Winner: {result['driver']})")
-
-print("\nSearch 2: Similar to Michael Schumacher's performance")
-schumacher_similar = f1_multimodal_search(driver_name="Michael Schumacher")
-for result in schumacher_similar[:3]:
-    print(f"- {result['driver']} at {result['grand_prix']} {result['year']}")
-
-print("\nSearch 3: Modern era races")
-modern_results = f1_multimodal_search(era_filter="modern")
-for result in modern_results[:3]:
-    print(f"- {result['grand_prix']} {result['year']} ({result['constructor']})")
+    return merge_and_rank_results(results)
 ```
 
-### 3. F1 Dataset Preparation for LLMs
+### 3. Dataset Preparation for LLMs
 
 ```python
-def prepare_f1_llm_dataset(source_data):
-    """Prepare F1 dataset for training language models on racing knowledge"""
-    
-    # Process F1 data with Daft
+def prepare_llm_dataset(source_data):
+    # Process with Daft
     df = daft.read_parquet(source_data)
     
-    # Create rich text descriptions for LLM training
-    def create_race_description(row):
-        return f"""In {row['Year']}, {row['Driver']} driving for {row['Team']} won the {row['Grand Prix']}. This victory was part of the {row['Year']} Formula 1 World Championship season. {row['Driver']} demonstrated exceptional skill and racecraft to claim victory at this prestigious event."""
-    
-    df_with_descriptions = df.with_column(
-        "race_description",
-        df.apply(create_race_description, return_dtype=daft.DataType.string())
-    )
-    
-    # Quality filtering for LLM training
-    df_quality = df_with_descriptions.where(
-        (daft.col("Year") >= 1970) &  # Focus on modern era with better documentation
-        (daft.col("Driver").str.len() > 3) &  # Filter out incomplete names
-        (daft.col("Team").str.len() > 2)  # Filter out incomplete team names
-    )
+    # Clean and filter
+    df_clean = df.where(daft.col("quality_score") > 0.8)\
+        .where(daft.col("text_length") > 100)
     
     # Generate embeddings for deduplication
-    def generate_content_embedding(description):
-        """Generate embedding for content deduplication"""
-        # In practice, use a proper text embedding model
-        return np.random.random(384).tolist()
-    
-    df_embedded = df_quality.with_column(
-        "content_embedding",
-        df_quality["race_description"].apply(generate_content_embedding)
+    df_embedded = df_clean.with_column(
+        "embedding",
+        df_clean["text"].apply(generate_embedding)
     )
     
-    # Create training examples with various formats
-    def create_training_examples(row):
-        """Create multiple training formats from F1 data"""
-        examples = []
-        
-        # Q&A format
-        examples.append({
-            "instruction": f"Who won the {row['Grand Prix']} in {row['Year']}?",
-            "response": f"{row['Driver']} won the {row['Grand Prix']} in {row['Year']}, driving for {row['Team']}.",
-            "category": "race_winner"
-        })
-        
-        # Historical context format
-        examples.append({
-            "instruction": f"Tell me about {row['Driver']}'s victory at the {row['Year']} {row['Grand Prix']}.",
-            "response": row['race_description'],
-            "category": "race_description"
-        })
-        
-        # Championship context
-        examples.append({
-            "instruction": f"What team did {row['Driver']} drive for in {row['Year']}?",
-            "response": f"In {row['Year']}, {row['Driver']} drove for {row['Team']}.",
-            "category": "driver_team"
-        })
-        
-        return examples
+    # Deduplicate using vector similarity
+    deduplicated_df = deduplicate_by_similarity(df_embedded)
     
-    # Generate training examples
-    training_examples = df_embedded.with_column(
-        "training_examples",
-        df_embedded.apply(create_training_examples, return_dtype=daft.DataType.python())
-    )
-    
-    # Deduplicate using vector similarity (simplified for example)
-    # In practice, you'd implement proper semantic deduplication
-    deduplicated_df = training_examples.distinct()
-    
-    # Save in format suitable for LLM training
-    deduplicated_df.select([
-        "Year", "Driver", "Team", "Grand Prix", 
-        "race_description", "training_examples"
-    ]).write_parquet("f1_llm_training_data.parquet")
-    
-    # Create JSONL format for popular LLM training frameworks
-    training_data = []
-    for _, row in deduplicated_df.to_pandas().iterrows():
-        for example in row['training_examples']:
-            training_data.append({
-                "instruction": example["instruction"],
-                "input": "",  # F1 questions usually don't need additional input
-                "output": example["response"],
-                "metadata": {
-                    "year": row["Year"],
-                    "driver": row["Driver"],
-                    "constructor": row["Team"],
-                    "grand_prix": row["Grand Prix"],
-                    "category": example["category"]
-                }
-            })
-    
-    # Save as JSONL for training
-    import json
-    with open("f1_llm_training.jsonl", "w") as f:
-        for item in training_data:
-            f.write(json.dumps(item) + "\n")
-    
-    print(f"Created {len(training_data)} training examples from F1 historical data")
-    print("Training data categories:")
-    categories = {}
-    for item in training_data:
-        cat = item["metadata"]["category"]
-        categories[cat] = categories.get(cat, 0) + 1
-    
-    for cat, count in categories.items():
-        print(f"  {cat}: {count} examples")
+    # Save in format suitable for training
+    deduplicated_df.write_parquet("llm_training_data.parquet")
     
     return deduplicated_df
-
-# Prepare F1 dataset for LLM training
-f1_llm_data = prepare_f1_llm_dataset("f1_multimodal_processed.parquet")
 ```
 
 ## Best Practices
 
 ### Data Architecture
-1. **Separate storage and compute**: Use object storage for F1 historical data, compute engines for race analysis
-2. **Implement proper data governance**: Track lineage of race results, data quality, and access patterns
-3. **Version your data**: Use tools like DVC or Delta Lake for versioning F1 datasets as new seasons are added
-4. **Monitor performance**: Track query performance for championship analysis and historical comparisons
+1. **Separate storage and compute**: Use object storage for data, compute engines for processing
+2. **Implement proper data governance**: Track lineage, quality, and access
+3. **Version your data**: Use tools like DVC or Delta Lake for versioning
+4. **Monitor performance**: Track query performance and resource usage
 
 ### Code Organization
 ```python
-# F1 Analytics Project Structure
-f1_multimodal_pipeline/
+# Project structure
+multimodal_pipeline/
 ├── data_ingestion/
-│   ├── kaggle_parser.py       # Parse Kaggle F1 dataset
-│   ├── race_validators.py     # Validate race result data
-│   └── season_processors.py   # Process by F1 season
+│   ├── parsers.py
+│   └── validators.py
 ├── processing/
-│   ├── driver_embeddings.py   # Generate driver performance embeddings
-│   ├── race_transformers.py   # Transform race characteristics
-│   └── team_analysis.py       # Constructor/team analysis
+│   ├── embeddings.py
+│   └── transformers.py
 ├── storage/
-│   ├── f1_parquet_ops.py     # F1-specific Parquet operations
-│   ├── vector_ops.py         # Vector operations for similarity
-│   └── historical_archive.py # Historical data management
+│   ├── parquet_ops.py
+│   └── vector_ops.py
 └── analytics/
-    ├── championship_queries.py # Championship and standings analysis
-    ├── era_comparisons.py     # Cross-era performance comparisons
-    └── race_visualizations.py # F1 data visualizations
+    ├── queries.py
+    └── visualizations.py
 ```
 
 ### Error Handling
 ```python
-def robust_f1_processing_pipeline(kaggle_csv_path):
-    """Robust F1 data processing with comprehensive error handling"""
-    
+def robust_processing_pipeline(data_path):
     try:
-        # Validate Kaggle dataset
-        if not os.path.exists(kaggle_csv_path):
-            raise FileNotFoundError(f"F1 dataset not found at {kaggle_csv_path}")
+        # Process data with proper error handling
+        df = daft.read_parquet(data_path)
         
-        # Read and validate F1 data
-        df = pd.read_csv(kaggle_csv_path)
+        # Validate data quality
+        if df.count().compute() == 0:
+            raise ValueError("Empty dataset")
         
-        # Validate required F1 columns
-        required_columns = ['Year', 'Grand Prix', 'Driver', 'Team']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            raise ValueError(f"Missing required F1 columns: {missing_columns}")
-        
-        # Data quality checks
-        if df.empty:
-            raise ValueError("F1 dataset is empty")
-        
-        if df['Year'].min() < 1950:
-            logger.warning("F1 data contains races before 1950 - may be invalid")
-        
-        # Process with error recovery for each driver
-        def safe_driver_analysis(driver_name):
-            try:
-                return analyze_driver_performance(driver_name)
-            except Exception as e:
-                logger.error(f"Failed to analyze driver {driver_name}: {e}")
-                return None  # Return None for failed analysis
-        
-        # Convert to Daft and process safely
-        daft_df = daft.from_pandas(df)
-        processed_df = daft_df.with_column(
-            "performance_analysis",
-            daft_df["Driver"].apply(safe_driver_analysis)
-        ).where(daft.col("performance_analysis").is_not_null())  # Filter out failed analyses
-        
-        # Verify we have sufficient data after processing
-        processed_count = processed_df.count().compute()
-        if processed_count == 0:
-            raise ValueError("All F1 driver analyses failed - check data quality")
-        
-        original_count = len(df)
-        success_rate = processed_count / original_count
-        if success_rate < 0.8:
-            logger.warning(f"Low success rate: {success_rate:.2%} of F1 records processed successfully")
+        # Process with error recovery
+        processed_df = df.with_column(
+            "processed",
+            df["raw_data"].apply(safe_process_function)
+        ).where(daft.col("processed").is_not_null())
         
         return processed_df
         
-    except FileNotFoundError as e:
-        logger.error(f"F1 dataset file error: {e}")
-        return handle_missing_f1_data()
-    
-    except ValueError as e:
-        logger.error(f"F1 data validation error: {e}")
-        return handle_invalid_f1_data(kaggle_csv_path, e)
-    
     except Exception as e:
-        logger.error(f"F1 pipeline failed unexpectedly: {e}")
-        return handle_f1_processing_failure(kaggle_csv_path, e)
-
-def handle_missing_f1_data():
-    """Fallback strategy when F1 dataset is missing"""
-    logger.info("Attempting to download F1 dataset from Kaggle...")
-    # In practice, implement automatic download or use backup dataset
-    return create_minimal_f1_dataset()
-
-def handle_invalid_f1_data(csv_path, error):
-    """Handle invalid F1 data by cleaning and retrying"""
-    logger.info(f"Attempting to clean F1 data due to: {error}")
-    
-    try:
-        # Try to clean the data
-        df = pd.read_csv(csv_path, encoding='utf-8', errors='ignore')
-        df = df.dropna(subset=['Driver', 'Team', 'Grand Prix'])
-        
-        # Save cleaned version
-        cleaned_path = csv_path.replace('.csv', '_cleaned.csv')
-        df.to_csv(cleaned_path, index=False)
-        
-        return robust_f1_processing_pipeline(cleaned_path)
-    except Exception as cleanup_error:
-        logger.error(f"F1 data cleanup also failed: {cleanup_error}")
-        return create_minimal_f1_dataset()
-
-def create_minimal_f1_dataset():
-    """Create a minimal F1 dataset for testing/fallback"""
-    minimal_data = {
-        'Year': [2023, 2023, 2023],
-        'Grand Prix': ['Monaco Grand Prix', 'British Grand Prix', 'Italian Grand Prix'],
-        'Driver': ['Max Verstappen', 'Lewis Hamilton', 'Charles Leclerc'],
-        'Team': ['Red Bull Racing', 'Mercedes', 'Ferrari']
-    }
-    return daft.from_pandas(pd.DataFrame(minimal_data))
-
-# Usage with comprehensive error handling
-try:
-    f1_processed = robust_f1_processing_pipeline("formula-1-winners.csv")
-    print(f"Successfully processed F1 data: {f1_processed.count().compute()} records")
-except Exception as e:
-    print(f"F1 processing completely failed: {e}")
+        logger.error(f"Pipeline failed: {e}")
+        # Implement fallback strategy
+        return handle_processing_failure(data_path, e)
 ```
 
 ## Conclusion
