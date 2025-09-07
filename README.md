@@ -4,7 +4,6 @@
 
 ## Table of Contents
 - [Introduction](#introduction)
-- [Understanding Data Evolution](#understanding-data-evolution)
 - [Parquet Files: The Foundation](#parquet-files-the-foundation)
 - [DuckDB: Analytics Made Simple](#duckdb-analytics-made-simple)
 - [LanceDB: Vector Search and Multimodal Data](#lancedb-vector-search-and-multimodal-data)
@@ -15,97 +14,52 @@
 - [Real-World Use Cases](#real-world-use-cases)
 
 ## Introduction
-
-The data landscape has evolved dramatically, and Formula 1 provides a perfect example of this evolution. We've moved from simple race results in CSV files to sophisticated multimodal data processing pipelines that handle telemetry data, driver photos, circuit layouts, team videos, and real-time analytics. This tutorial explores the modern data stack using the **Formula 1 Grand Prix Winners Dataset (1950–2025)** from Kaggle.
-
-
 In this tutorial I will introduce basics of multimodal data processing pipelines using  **[Formula 1 Grand Prix Winners Dataset (1950–2025)](https://www.kaggle.com/datasets/julianbloise/winners-formula-1-1950-to-2025/data)** from Kaggle, demonstrating key concepts such as Parquet files that type safety deliver 75-90% smaller file sizes and dramatically faster analytical queries compared to CSV's plain text, **[DuckDB](https://duckdb.org/)**, an in-process analytical database with columnar execution and zero-configuration setup that provides SQL compatibility with vectorized processing for OLAP workloads; **[LanceDB](https://lancedb.com/)**, a vector database specialized for AI applications that enables efficient similarity searches on high-dimensional embeddings while supporting multimodal storage and real-time ingestion; and **[Daft](https://docs.daft.ai/en/stable/)** framework that handles structured tables, unstructured text, and rich media like images.
 
-### What You'll Learn
-- How to work with F1 race data in Parquet files for efficient storage
-- Using DuckDB for fast analytical queries on historical race results
-- Implementing vector search with LanceDB for driver and team similarity
-- Processing multimodal F1 data (images, videos, telemetry) with Daft
-- Scaling F1 analytics with Databricks
-- Building production-ready motorsports data pipelines
+# CSV & Parquet Files: The Foundation
 
-## Understanding Data Evolution
+While Kaggle F1 datasets come in CSV format, converting to Parquet becomes essential as your analysis scales. CSV works well for initial exploration and human-readable data sharing, but Parquet excels for repeated analysis on large datasets with its columnar storage, better compression, and fast filtering capabilities. For F1 analytics, Parquet's predicate pushdown lets you efficiently filter by specific seasons or circuits without reading entire files, while its compression handles massive telemetry datasets that would be unwieldy as CSV.
 
-### Traditional Tabular Workloads
-Traditional F1 analytics focused on structured race results:
-```sql
--- Race winner analysis example
-SELECT 
-    d.forename || ' ' || d.surname as driver_name,
-    c.name as constructor,
-    COUNT(*) as wins
-FROM results r
-JOIN drivers d ON r.driverId = d.driverId
-JOIN constructors c ON r.constructorId = c.constructorId
-WHERE r.positionOrder = 1 
-    AND r.raceId IN (
-        SELECT raceId FROM races WHERE year >= 2020
-    )
-GROUP BY d.driverId, c.constructorId
-ORDER BY wins DESC;
-```
-
-### Modern Multimodal F1 Workloads
-Today's F1 applications require processing diverse data types:
-- Circuit layout images and aerial photos for track analysis
-- Driver helmet cam videos for performance analysis
-- Team radio audio for sentiment analysis
-- Car telemetry data for performance optimization
-- Fan social media content for engagement metrics
-
-## Parquet Files: The Foundation
-
-Parquet has become essential for F1 analytics, replacing CSV for historical race data storage:
-
-### Why Parquet Over CSV for F1 Data?
+## Loading the Kaggle Dataset
 
 ```python
+# Install dependencies: pip install kagglehub[pandas-datasets]
+import kagglehub
+from kagglehub import KaggleDatasetAdapter
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 
-# CSV limitations with F1 data
-f1_results_csv = pd.read_csv('f1_race_results.csv')  # Slow, no schema, large size
-
-# Parquet benefits for F1 analytics
-f1_results_parquet = pd.read_parquet('f1_race_results.parquet')  # Fast, typed, compressed
+# Load F1 winners dataset
+df = kagglehub.load_dataset(
+    KaggleDatasetAdapter.PANDAS,
+    "julianbloise/winners-formula-1-1950-to-2025",
+    file_path=""
+)
+print(f"Dataset loaded: {df.shape}")
 ```
 
-### Key Advantages for F1 Data:
-1. **Columnar Storage**: Better compression for lap times and telemetry
-2. **Schema Evolution**: Add new columns as F1 regulations change
-3. **Predicate Pushdown**: Skip irrelevant seasons/circuits
-4. **Compression**: Handle massive telemetry datasets efficiently
-
-### Working with F1 Parquet Data
+## CSV vs Parquet Performance
 
 ```python
-# Creating F1 Parquet files from Kaggle dataset
-f1_data = {
-    'race_id': range(1, 1001),
-    'driver_name': [f'Driver_{i}' for i in range(1, 1001)],
-    'constructor': ['Mercedes', 'Ferrari', 'Red Bull'] * 334,
-    'circuit_name': ['Monaco', 'Silverstone', 'Monza'] * 334,
-    'position': [1, 2, 3] * 334,
-    'points': [25, 18, 15] * 334,
-    'fastest_lap_time': ['1:23.456', '1:24.123', '1:24.789'] * 334,
-    'season': [2020 + (i // 50) for i in range(1000)]
-}
+# Save both formats and compare
+df.to_csv('f1_winners.csv', index=False)
+df.to_parquet('f1_winners.parquet')
 
-df = pd.DataFrame(f1_data)
-df.to_parquet('f1_race_results.parquet')
+import os
+csv_size = os.path.getsize('f1_winners.csv') / 1024**2
+parquet_size = os.path.getsize('f1_winners.parquet') / 1024**2
+print(f"CSV: {csv_size:.1f}MB, Parquet: {parquet_size:.1f}MB ({csv_size/parquet_size:.1f}x smaller)")
 
-# Reading with F1-specific filters
+# Fast filtering with Parquet (only reads matching data)
 recent_winners = pd.read_parquet(
-    'f1_race_results.parquet',
-    filters=[('season', '>=', 2020), ('position', '==', 1)]
+    'f1_winners.parquet',
+    filters=[('year', '>=', 2020)] if 'year' in df.columns else None
 )
 ```
+
+## When to Choose Each Format
+
+- **CSV**: Initial exploration, small datasets (<100MB), human readability, one-time analysis
+- **Parquet**: Large datasets, repeated analysis, performance-critical workflows, long-term storage
 
 ## DuckDB: Analytics Made Simple
 
