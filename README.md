@@ -1011,4 +1011,4 @@ ORDER BY dnf_rate DESC;
 
 ---
 
-*This tutorial provides a foundation for building modern multimodal F1 data pipelines using real Formula 1 racing data. The motorsports analytics landscape evolves rapidly with new regulations and technologies, so stay updated with the latest developments in each tool and F1 data sources.*
+*This tutorial provides a foundation for building modern multimodal F1 data pipelines using real Formula 1 racing data. If you would like to contribute fork the project and commit your changes.*
