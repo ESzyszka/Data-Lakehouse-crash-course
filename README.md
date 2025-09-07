@@ -18,6 +18,9 @@
 
 The data landscape has evolved dramatically, and Formula 1 provides a perfect example of this evolution. We've moved from simple race results in CSV files to sophisticated multimodal data processing pipelines that handle telemetry data, driver photos, circuit layouts, team videos, and real-time analytics. This tutorial explores the modern data stack using the **Formula 1 Grand Prix Winners Dataset (1950–2025)** from Kaggle.
 
+
+In this tutorial I will introduce basics of multimodal data processing pipelines using  **[Formula 1 Grand Prix Winners Dataset (1950–2025)](https://www.kaggle.com/datasets/julianbloise/winners-formula-1-1950-to-2025/data)** from Kaggle, demonstrating key concepts such as Parquet files that type safety deliver 75-90% smaller file sizes and dramatically faster analytical queries compared to CSV's plain text, **[DuckDB](https://duckdb.org/)**, an in-process analytical database with columnar execution and zero-configuration setup that provides SQL compatibility with vectorized processing for OLAP workloads; **[LanceDB](https://lancedb.com/)**, a vector database specialized for AI applications that enables efficient similarity searches on high-dimensional embeddings while supporting multimodal storage and real-time ingestion; and **[Daft](https://docs.daft.ai/en/stable/)** framework that handles structured tables, unstructured text, and rich media like images.
+
 ### What You'll Learn
 - How to work with F1 race data in Parquet files for efficient storage
 - Using DuckDB for fast analytical queries on historical race results
