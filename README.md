@@ -244,77 +244,72 @@ pip install getdaft
 ```python
 import daft
 
-# Read F1 race results
-f1_df = daft.read_parquet("f1_race_results.parquet")
+# Read F1 race results from CSV
+f1_df = daft.read_csv("f1_race_results.csv")
+
+# Define UDFs for image processing
+@daft.udf(return_dtype=daft.DataType.python())
+def load_f1_image(path):
+    # Your image loading logic here
+    return load_image_function(path)
+
+@daft.udf(return_dtype=daft.DataType.tensor(daft.DataType.float32()))
+def extract_driver_features(image_data):
+    # Your feature extraction logic
+    return extract_features(image_data)
 
 # Process driver helmet images
 f1_with_images = f1_df.with_column(
     "driver_image_data", 
-    daft.col("driver_photo_path").apply(
-        lambda x: load_f1_image(x), 
-        return_dtype=daft.DataType.python()
-    )
+    load_f1_image(daft.col("driver_photo_path"))
 )
 
 # Extract visual features from driver photos
 f1_processed = f1_with_images.with_column(
     "driver_visual_features",
-    daft.col("driver_image_data").apply(
-        extract_driver_features, 
-        return_dtype=daft.DataType.tensor(daft.DataType.float32())
-    )
+    extract_driver_features(daft.col("driver_image_data"))
 )
-
-# Show processed data
-f1_processed.select(["driver_name", "constructor", "driver_visual_features"]).show()
 ```
 
 ### Advanced F1 Multimodal Operations
 
 ```python
 # F1 video processing pipeline for race highlights
-f1_videos = daft.read_parquet("f1_race_videos.parquet")
+f1_videos = daft.read_csv("f1_race_videos.csv")
 
-# Extract key moments from race videos
-race_moments = f1_videos.with_column(
-    "key_frames",
-    daft.col("race_video_path").apply(extract_race_highlights)
-)
+# Define video processing UDFs
+@daft.udf(return_dtype=daft.DataType.python())
+def extract_race_highlights(video_path):
+    # Extract key moments logic
+    return extract_highlights(video_path)
 
-# Generate embeddings for race moments
-race_embeddings = race_moments.with_column(
-    "moment_embeddings", 
-    daft.col("key_frames").apply(generate_f1_video_embeddings)
-)
-
-# Analyze overtaking maneuvers
+# Use .filter() instead of .where()
 overtaking_analysis = race_embeddings.with_column(
     "overtaking_score",
-    daft.col("moment_embeddings").apply(detect_overtaking_moves)
-).where(daft.col("overtaking_score") > 0.8)
+    detect_overtaking_moves(daft.col("moment_embeddings"))
+).filter(daft.col("overtaking_score") > 0.8)
 
-# Save to LanceDB for similarity search
-overtaking_analysis.write_lance("f1_overtaking_moments")
+# Save results as CSV
+overtaking_analysis.write_csv("f1_overtaking_moments.csv")
 ```
 
 ### F1 Telemetry Processing
 
 ```python
-# Process real-time F1 telemetry data
-telemetry_df = daft.read_parquet("f1_telemetry_*.parquet")
+# Process F1 telemetry data from CSV
+telemetry_df = daft.read_csv("f1_telemetry_data.csv")
+
+# Define telemetry analysis UDFs
+@daft.udf(return_dtype=daft.DataType.string())
+def calculate_speed_zones(speed_kph):
+    # Speed zone calculation logic
+    return analyze_speed(speed_kph)
 
 # Calculate performance metrics
 performance_df = telemetry_df.with_columns([
-    daft.col("speed_kph").apply(calculate_speed_zones).alias("speed_zone"),
-    daft.col("throttle_percent").apply(analyze_throttle_usage).alias("throttle_efficiency"),
-    daft.col("brake_pressure").apply(detect_braking_points).alias("braking_analysis")
-])
-
-# Aggregate by driver and circuit
-driver_performance = performance_df.groupby(["driver_id", "circuit_id"]).agg([
-    daft.col("speed_zone").mean().alias("avg_speed_zone"),
-    daft.col("throttle_efficiency").mean().alias("avg_throttle_eff"),
-    daft.col("lap_time_ms").min().alias("best_lap_time")
+    calculate_speed_zones(daft.col("speed_kph")).alias("speed_zone"),
+    analyze_throttle_usage(daft.col("throttle_percent")).alias("throttle_efficiency"),
+    detect_braking_points(daft.col("brake_pressure")).alias("braking_analysis")
 ])
 ```
 
